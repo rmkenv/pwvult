@@ -1,0 +1,16 @@
+[Unit]
+Description=PipeWrench FastAPI (Anthropic)
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/pipewrench
+EnvironmentFile=/opt/pipewrench/.env
+ExecStart=/opt/pipewrench/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8001 --workers 2
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
