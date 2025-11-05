@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PipeWrench AI</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/static/style.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="container">
+    <h1>PipeWrench AI</h1>
+    <p class="subtitle">Municipal DPW Knowledge Capture • Anthropic Claude</p>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Ask a Question</h2>
+        <form id="query-form">
+          <label for="department">Department</label>
+          <select id="department" name="department">
+            {% for d in departments %}
+            <option value="{{ d.value }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="role">Role</label>
+          <select id="role" name="role">
+            {% for r in roles %}
+            <option value="{{ r.value }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="query">Your Question</label>
+          <textarea id="query" name="query" placeholder="Type a question..."></textarea>
+
+          <input type="hidden" id="session_id" name="session_id" />
+          <button type="submit">Submit</button>
+        </form>
+
+        <div id="response" class="response"></div>
+      </div>
+
+      <div class="card">
+        <h2>Upload PDF (RAG Context)</h2>
+        <form id="upload-form" enctype="multipart/form-data">
+          <label for="upload-department">Department</label>
+          <select id="upload-department" name="department">
+            {% for d in departments %}
+            <option value="{{ d.value }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="upload-role">Role</label>
+          <select id="upload-role" name="role">
+            {% for r in roles %}
+            <option value="{{ r.value }}">{{ r.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="file">PDF File</label>
+          <input type="file" id="file" name="file" accept="application/pdf" />
+
+          <label for="upload-session">Session ID</label>
+          <input type="text" id="upload-session" name="session_id" placeholder="e.g., dpw-1234" />
+
+          <button type="submit">Upload</button>
+        </form>
+        <div id="upload-result" class="response"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Info</h2>
+      <ul>
+        <li>Model: {{ model_name }}</li>
+        <li>Demo mode: {{ "YES" if is_demo_mode else "NO" }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    const queryForm = document.getElementById('query-form');
+    const responseDiv = document.getElementById('response');
+    const sessionInput = document.getElementById('session_id');
+
+    const uploadForm = document.getElementById('upload-form');
+    const uploadResult = document.getElementById('upload-result');
+
+    queryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      responseDiv.textContent = "Working...";
+      const payload = {
+        session_id: sessionInput.value || null,
+        query: document.getElementById('query').value,
+        role: document.getElementById('role').value,
+        department: document.getElementById('department').value
+      };
+      try {
+        const res = await fetch('/api/query', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!sessionInput.value && data.session_id) {
+          sessionInput.value = data.session_id;
+          document.getElementById('upload-session').value = data.session_id;
+        }
+        responseDiv.textContent = data.response || JSON.stringify(data);
+      } catch (err) {
+        responseDiv.textContent = 'Error: ' + err;
+      }
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      uploadResult.textContent = "Uploading...";
+      const formData = new FormData(uploadForm);
+      try {
+        const res = await fetch('/api/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.session_id) {
+          sessionInput.value = data.session_id;
+          document.getElementById('upload-session').value = data.session_id;
+        }
+        uploadResult.textContent = data.message ? `${data.message} (Session: ${data.session_id})` : JSON.stringify(data);
+      } catch (err) {
+        uploadResult.textContent = 'Error: ' + err;
+      }
+    });
+  </script>
+</body>
+</html>
